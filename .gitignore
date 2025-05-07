@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+RAG/chroma_db_
 # C extensions
 *.so
 
