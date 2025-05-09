@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, redirect, url_for, flash, session
+from flask import Flask, request, render_template, redirect, url_for, flash
 import os
 import shutil
 # --- RAG imports ---
@@ -42,37 +42,18 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def run_rag_with_context(question, context, retriever):
-    # You can modify this to use the context in your prompt
-    from RAG.RAG import run_rag
-    # Here, you can concatenate context and question, or modify the prompt template in RAG.py
-    # For now, let's just prepend context to the question
-    full_question = f"{context}\n{question}"
-    return run_rag(full_question, retriever=retriever)
-
 # --- Chatbot (Q&A) route at root ---
 @app.route('/', methods=['GET', 'POST'])
 def qa():
     answer = None
     question = None
-    chat_history = session.get('chat_history', [])
     if request.method == 'POST':
         question = request.form.get('question')
         if not retriever:
             answer = "Retriever not initialized. Please create a new RAG bot by uploading a PDF."
         elif question:
-            # Build context from last N turns
-            N = 3  # Number of previous turns to remember
-            context = ""
-            for q, a in chat_history[-N:]:
-                context += f"User: {q}\nBot: {a}\n"
-            context += f"User: {question}\n"
-            # Use a custom run_rag_with_context function
-            answer = run_rag_with_context(question, context, retriever=retriever)
-            # Update chat history
-            chat_history.append((question, answer))
-            session['chat_history'] = chat_history
-    return render_template('qa.html', answer=answer, question=question, chat_history=chat_history)
+            answer = run_rag(question, retriever=retriever)
+    return render_template('qa.html', answer=answer, question=question)
 
 # --- New RAG bot creation route ---
 @app.route('/new-bot', methods=['GET', 'POST'])
@@ -112,4 +93,4 @@ def new_bot():
     return render_template('upload.html', new_bot=True)
 
 if __name__ == '__main__':
-    app.run(debug=True, port = 5001) 
+    app.run(debug=True) 
