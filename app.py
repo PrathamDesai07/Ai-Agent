@@ -29,7 +29,7 @@ def init_retriever():
     global retriever
     if os.path.exists(chroma_db_dir) and os.path.isdir(chroma_db_dir):
         if api_key is None:
-            key = os.getenv('GOOGLE_API_KEY', 'AIzaSyDlVCKsmkbHbQHl49zHkzbBbQ7iTRmdBSM')
+            key = os.getenv('GOOGLE_API_KEY')
         else:
             key = api_key
         embedding_model = GoogleGenerativeAIEmbeddings(google_api_key=key, model="models/embedding-001")
