@@ -1,6 +1,8 @@
 from flask import Flask, request, render_template, redirect, url_for, flash
 import os
 import shutil
+import requests
+import re
 # --- RAG imports ---
 from RAG.RAG import run_rag
 from RAG.vector_db import process_pdf_to_vector_db
@@ -52,7 +54,39 @@ def qa():
         if not retriever:
             answer = "Retriever not initialized. Please create a new RAG bot by uploading a PDF."
         elif question:
-            answer = run_rag(question, retriever=retriever)
+            # Chit-chat/greeting detection
+            greetings = ['hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening']
+            if question.strip().lower() in greetings:
+                answer = "Hello! How can I assist you with your document today?"
+            else:
+                # Weather query classification
+                weather_pattern = re.compile(r"what(?:'s| is)? the weather (?:today|now)?(?: at| in)? ([a-zA-Z\s]+)", re.IGNORECASE)
+                match = weather_pattern.search(question)
+                if match:
+                    city = match.group(1).strip()
+                    api_key = "104af4b497fb3d0fe2180abadf2f25ea"
+                    url = f"http://api.weatherstack.com/current?access_key={api_key}&query={city}"
+                    try:
+                        resp = requests.get(url)
+                        data = resp.json()
+                        if 'current' in data:
+                            weather_desc = data['current']['weather_descriptions'][0]
+                            temp = data['current']['temperature']
+                            feelslike = data['current']['feelslike']
+                            answer = f"The weather in {city} is {weather_desc} with a temperature of {temp}°C (feels like {feelslike}°C)."
+                        elif 'error' in data:
+                            answer = f"Weather API error: {data['error'].get('info', 'Unknown error')}"
+                        else:
+                            answer = "Could not retrieve weather information."
+                    except Exception as e:
+                        answer = f"Error fetching weather: {e}"
+                else:
+                    # RAG pipeline
+                    rag_answer = run_rag(question, retriever=retriever)
+                    if not rag_answer or rag_answer.strip() == "":
+                        answer = "I'm sorry, I couldn't find relevant information in the document."
+                    else:
+                        answer = rag_answer
     return render_template('qa.html', answer=answer, question=question)
 
 # --- New RAG bot creation route ---
@@ -93,4 +127,4 @@ def new_bot():
     return render_template('upload.html', new_bot=True)
 
 if __name__ == '__main__':
-    app.run(debug=True) 
+    app.run(debug=True, port=5000) 
